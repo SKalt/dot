@@ -17,7 +17,7 @@
 
 # utility functions ############################################################
 usage() {
-  head -20 "$0" | # print the first 20 lines of this file
+  head -20 "$0" | # print the first 20 lines of this file ("$0")
   grep -e '^###' | # find the lines that start (`^`) with `###`
   sed 's/^### //g; s/^###//g'; # delete all leading instances of `###`
   # note that $0 is the first elements of the command-line arguments array;
@@ -30,19 +30,48 @@ is_directory()    { test -d "$1"; }
 # $1, $2, etc. are variables that represent the $nth element in a function's
 # array of arguments
 
+is_installed() {
+  local missing=(); # create a bash array
+  for cmd in "$@"; do # iterate over each argument to this function
+    # "$@" means the arguments $1, $2, ... as an array
+    if ! command -v "$cmd" &>/dev/null; then
+      log_error "missing \`$cmd\`"
+      # watch out! Backticks evaluate their contents as commands unless they're
+      # escaped in double-quotes. You don't need to escape backticks inside
+      # single quotes, but you can't use "$variable_substitution" either.
+
+      missing+=("$cmd") # append the missing command to the arrary
+    fi
+  done
+  if test "${#missing[@]}" -gt 0; then
+    # if the number of missing programs is greater than 0...
+
+    # ("${#variable}" evaluates to the length of the variable iff the variable
+    # is a string.  For arrays, "${#array}" evaluates to the lenght of the first
+    # element.  To get the length of the array as the array's number of elements,
+    # you have to write "${array[@]}")
+
+    return 1 # return 0 means succeed, anything else is a failure code
+  fi
+}
+
+
 supports_color() {
-  test -t 1 && # stdout must be an interacive terminal
+  test -t 1 && # stdout (device 1) must be an interacive terminal, a.k.a a tty
   is_empty_string "${NO_COLOR:-}"; # respect the NO_COLOR environment variable
   # "${var_name:-}" evaluates either to the value of `var_name` or "" if `var_name`
-  # is unset
+  # is unset.
 }
+
+# look up ansi color codes
 red="$(tput setaf 1)"
+blue="$(tput setaf 4)"
 reset="$(tput sgr0)"
 
 log_error() {
   if (supports_color); then
-    for message in "$@"; do echo "${red}ERROR\x1b${reset} $message" >&2; done;
-    # ANSI escape codes for red    ^^^^^^^^      ^^^^^^ and resetting the color
+    for message in "$@"; do echo "${red}[ERROR]${reset} $message" >&2; done;
+    # ANSI escape codes for red     ^^^        ^^^^^  and resetting the color
     # "$@" is this function's arguments array
     # >&2 redirects stdout (device 1) to stderr (device 2)
   else
@@ -52,14 +81,14 @@ log_error() {
 
 log_info() {
   if (supports_color); then
-    for message in "$@"; do echo "[\x1b[34mINFO\x1b[0m] $message" >&2; done;
+    for message in "$@"; do echo "${blue}[INFO]${reset} $message" >&2; done;
     # ANSI escape codes for blue  ^^^^^^^^      ^^^^^^ and resetting the color
   else
     for message in "$@"; do echo "[INFO] $message" >&2; done;
   fi
 }
 
-is_git_dir() { git --git-dir="$1" rev-parse; }
+is_git_dir() { git --git-dir="$1" rev-parse &>/dev/null; }
 
 # setup functions ##############################################################
 
@@ -102,8 +131,8 @@ initialize_bare_repo() {
     return 0;
   else
     log_error \
-      "expected remote '${git_remote}'" \
-      "actual remote   '${current_remote}'";
+      "desired remote '${git_remote}'" \
+      "pre-existing remote   '${current_remote}'";
     return 1;
   fi
 }
@@ -139,6 +168,7 @@ create_alias() {
   # an alias is a string that your shell expands to another string.
   # shellcheck disable=2139
   local dotfile_alias="alias dotfiles='git --git-dir=$git_dir --work-tree=$HOME'"
+  echo "$dotfile_alias" > /tmp/dotfile_alias
   if path_exists "$HOME/.bashrc"; then
     if (grep -qve '^alias dotfiles=' ~/.bashrc); then
      echo "$dotfile_alias" >> "$HOME/.bashrc";
@@ -160,7 +190,6 @@ main() {
       --git-remote=*) git_remote="${1##*=}"; shift;;
       --git-remote) shift; git_remote=$1; shift;;
       --git-dir=*)
-          log_info "h"
           git_dir="${1##*=}";
           shift;;
       --git-dir) shift; git_dir=$1; shift;;
@@ -175,6 +204,8 @@ main() {
   # ^ if any part of a chain of pipes fails, the entire pipeline fails rather
   # than continuing with empty input from the failed step
   set -o errtrace # retain error traces: what called what
+
+  is_installed git
 
   if is_empty_string "${git_remote:-}"; then
     # read in the git_remote variable from human input
@@ -193,6 +224,22 @@ main() {
   ignore_everything "$git_dir" "${dotfiles_dir:-$HOME/.dotfiles}"
   create_alias "$git_dir"
   log_info "================================ DONE ================================"
+  log_info "to start using your \`dotfiles\` command, start a new login shell"
+  log_info "(\`$SHELL -l\`) or evaluate the following in your current terminal:"
+  echo
+  cat /tmp/dotfile_alias
+  echo "dotfiles --help"
+  echo;
 }
 
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  # this file ($0) will only be the 0th element in the BASH_SOURCE array when
+  # this file is being run directly. It's useful to write bash scripts this way,
+  # with only functions and variable definitions at the top level, so you can
+  # safely source the file (`source path/to/script`) and try out your
+  # functions individually.
+
+  # you may recognize this pattern in other programming languages.
+
+  main "$@"; # accept arguments ("$@") and pass them to the main function
+fi
