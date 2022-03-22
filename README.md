@@ -29,8 +29,8 @@ The start of your dotfiles!
     # make sure you've moved all pre-existing dotfiles to other backup locations.
     # For example, you might`mv ~/.bashrc ~/.bashrc.bak`
     dotfiles_git_dir="${dotfiles_git_dir:-$HOME/.dotfiles.git}"
-    git clone --bare "$your_dotfiles_repo" $dotfiles_git_dir
-    alias dotfiles="git --git-dir=$dotfiles_git_dir --work-tree=$HOME"
-    dotfiles config core.excludesFile $HOME/.dotfiles/dotfiles_exclude
+    git clone --bare "$your_dotfiles_repo" "$dotfiles_git_dir"
+    alias dotfiles="git --git-dir=\"$dotfiles_git_dir\" --work-tree=\"$HOME\""
+    dotfiles config core.excludesFile "$HOME/.dotfiles/dotfiles_exclude"
     dotfiles checkout
     ```
