@@ -9,7 +9,7 @@ The start of your dotfiles!
     target_file="/tmp/dotfiles_init.sh"
     url=https://raw.githubusercontent.com/SKalt/dot/main/dotfiles_init.sh
 
-    curl -Lo "$target_file"
+    curl -Lo "$target_file" "$url"
     # `-L` means follow redirects
     # `-o "$target_file"` where to put the download
 
