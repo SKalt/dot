@@ -3,8 +3,8 @@
 ###                         [--dotfiles-dir <DOTFILES_DIR>]
 ###                         [--git-remote <GIT_REMOTE>]
 ###
-### set up your dotfiles, roughly following
-### https://www.atlassian.com/git/tutorials/dotfiles
+### Starts managing your `$HOME` directory as a bare git repo. 
+### Based on https://www.atlassian.com/git/tutorials/dotfiles.
 ###
 ### ARGS:
 ###     -h|--help          print this message and exit
