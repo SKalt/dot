@@ -1,5 +1,5 @@
 # dot
-The start of your dotfiles!
+The start of your dotfiles: an easy setup script for managing your entire `$HOME` directory using `git`.
 
 ## Usage
 
